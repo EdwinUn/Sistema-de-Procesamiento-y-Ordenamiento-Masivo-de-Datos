@@ -35,6 +35,8 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Iterator, Tuple, Optional
 
+from ordenamiento_interno import ResultadoOrden
+
 
 # ══════════════════════════════════════════════════════════════════════════
 #  RESULTADO ESTÁNDAR
@@ -149,6 +151,29 @@ class _CintaTemporal:
         return len(self.leer_todo())
 
 
+def _ordenar_chunk(datos: List[int], reversa: bool = False) -> List[int]:
+    n = len(datos)
+    for i in range(1, n):
+        clave = datos[i]
+        j = i - 1
+        while j >= 0 and ((not reversa and datos[j] > clave) or (reversa and datos[j] < clave)):
+            datos[j + 1] = datos[j]
+            j -= 1
+        datos[j + 1] = clave
+    return datos
+
+
+def ordenar_externo(datos: List[int], chunk_size: int = 3, reversa: bool = False) -> ResultadoOrden:
+    res = mezcla_directa(datos, chunk_size=chunk_size, reversa=reversa)
+    algoritmo = f"{res.algoritmo} ({'Descendente' if reversa else 'Ascendente'})"
+    return ResultadoOrden(
+        arreglo=res.arreglo,
+        algoritmo=algoritmo,
+        tiempo_ms=res.tiempo_ms,
+        detalles=res.descripcion,
+    )
+
+
 def _escribir_datos_en_cinta(datos: List[int]) -> _CintaTemporal:
     """Crea una cinta temporal y escribe los datos en ella."""
     cinta = _CintaTemporal()
@@ -160,7 +185,7 @@ def _escribir_datos_en_cinta(datos: List[int]) -> _CintaTemporal:
 #  1. MEZCLA DIRECTA (Direct Merge Sort)
 # ══════════════════════════════════════════════════════════════════════════
 
-def mezcla_directa(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
+def mezcla_directa(datos: List[int], chunk_size: int = 3, reversa: bool = False) -> ResultadoExterno:
     """
     Mezcla Directa (2-way external merge sort):
     ─────────────────────────────────────────────
@@ -197,7 +222,7 @@ def mezcla_directa(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
     corridas = 0
 
     for i in range(0, n, chunk_size):
-        bloque = sorted(datos[i : i + chunk_size])
+        bloque = _ordenar_chunk(datos[i : i + chunk_size], reversa=reversa)
         res.lecturas    += len(bloque)
         res.escrituras  += len(bloque)
         if turno:
@@ -232,7 +257,7 @@ def mezcla_directa(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
             ia = ib = 0
             while ia < len(blq_a) and ib < len(blq_b):
                 res.comparaciones += 1
-                if blq_a[ia] <= blq_b[ib]:
+                if (not reversa and blq_a[ia] <= blq_b[ib]) or (reversa and blq_a[ia] >= blq_b[ib]):
                     fusionado.append(blq_a[ia]); ia += 1
                 else:
                     fusionado.append(blq_b[ib]); ib += 1
@@ -404,7 +429,7 @@ def mezcla_equilibrada(datos: List[int], chunk_size: int = 3,
     corridas   = 0
 
     for i, inicio_blq in enumerate(range(0, n, chunk_size)):
-        bloque = sorted(datos[inicio_blq : inicio_blq + chunk_size])
+        bloque = _ordenar_chunk(datos[inicio_blq : inicio_blq + chunk_size], reversa=reversa)
         cintas_ent[corridas % k].agregar(bloque)
         res.lecturas   += len(bloque)
         res.escrituras += len(bloque)
@@ -522,7 +547,7 @@ def mezcla_polifasica(datos: List[int], chunk_size: int = 3,
     # ── FASE 1: generar corridas ordenadas ───────────────────────────────
     corridas: List[List[int]] = []
     for i in range(0, n, chunk_size):
-        bloque = sorted(datos[i : i + chunk_size])
+        bloque = _ordenar_chunk(datos[i : i + chunk_size], reversa=reversa)
         corridas.append(bloque)
         res.lecturas   += len(bloque)
         res.escrituras += len(bloque)

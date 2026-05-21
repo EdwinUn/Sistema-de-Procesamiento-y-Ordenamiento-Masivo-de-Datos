@@ -6,7 +6,8 @@ from typing import List, Optional
 
 from config.settings import ARCHIVO_POR_DEFECTO, MENSAJE_BIENVENIDA
 from libs.busquedas import ResultadoBusqueda, busqueda_binaria, busqueda_lineal
-from libs.ordenamientos import ResultadoOrden, ordenar_externo, ordenar_interno
+from ordenamiento_interno import ResultadoOrden, ordenar_interno
+from ordenamiento_externo import ordenar_externo
 from utils.file_handler import cargar_datos, exportar_resultados
 
 
@@ -23,6 +24,7 @@ class DataApp(tk.Tk):
 
         self.sort_type = tk.StringVar(value="interno")
         self.sort_method = tk.StringVar(value="bubble")
+        self.sort_order = tk.StringVar(value="asc")
         self.search_type = tk.StringVar(value="lineal")
         self.chunk_size = tk.StringVar(value="100")
         self.search_value = tk.StringVar()
@@ -66,6 +68,18 @@ class DataApp(tk.Tk):
             value="externo",
             command=self._actualizar_opciones_ordenamiento,
         ).grid(row=0, column=1, padx=4, pady=4, sticky="w")
+        ttk.Radiobutton(
+            orden_frame,
+            text="Ascendente",
+            variable=self.sort_order,
+            value="asc",
+        ).grid(row=0, column=2, padx=4, pady=4, sticky="w")
+        ttk.Radiobutton(
+            orden_frame,
+            text="Descendente",
+            variable=self.sort_order,
+            value="desc",
+        ).grid(row=0, column=3, padx=4, pady=4, sticky="w")
 
         ttk.Label(orden_frame, text="Método interno:").grid(row=1, column=0, padx=4, pady=6, sticky="w")
         self._metodo_combo = ttk.Combobox(
@@ -167,17 +181,27 @@ class DataApp(tk.Tk):
             return
 
         try:
+            reversa = self.sort_order.get() == "desc"
             if self.sort_type.get() == "interno":
                 metodo = self.sort_method.get()
-                self.resultado_orden = ordenar_interno(self.datos, metodo=metodo)
+                self.resultado_orden = ordenar_interno(
+                    self.datos,
+                    metodo=metodo,
+                    reversa=reversa,
+                )
             else:
                 chunk_value = self.chunk_size.get().strip()
                 if not chunk_value.isdigit() or int(chunk_value) < 1:
                     raise ValueError("El tamaño de chunk debe ser un entero positivo.")
-                self.resultado_orden = ordenar_externo(self.datos, chunk_size=int(chunk_value))
+                self.resultado_orden = ordenar_externo(
+                    self.datos,
+                    chunk_size=int(chunk_value),
+                    reversa=reversa,
+                )
 
             detalles = (
                 f"Ordenamiento finalizado:\nAlgoritmo: {self.resultado_orden.algoritmo}\n"
+                f"Orden: {'Descendente' if reversa else 'Ascendente'}\n"
                 f"Tiempo: {self.resultado_orden.tiempo_ms:.2f} ms\n"
                 f"Cantidad de valores: {len(self.resultado_orden.arreglo)}\n"
             )
@@ -266,7 +290,12 @@ class DataApp(tk.Tk):
             return
 
         try:
-            exportar_resultados(self.resultado_orden.arreglo, ruta)
+            exportar_resultados(
+                self.resultado_orden.arreglo,
+                ruta,
+                self.resultado_orden.algoritmo,
+                self.resultado_orden.tiempo_ms,
+            )
             messagebox.showinfo("Exportación", f"Resultados guardados en:\n{ruta}")
             self._actualizar_estado("Exportación completada.")
         except Exception as error:
@@ -281,8 +310,14 @@ class DataApp(tk.Tk):
 
     @staticmethod
     def _obtener_vista_previa(arreglo: List[float], limite: int = 20) -> str:
-        vista = ", ".join(str(valor) for valor in arreglo[:limite])
-        return f"Primeros {min(limite, len(arreglo))} valores ordenados:\n[{vista}]\n"
+        total = len(arreglo)
+        primeros = ", ".join(str(valor) for valor in arreglo[:limite])
+        ultimos = ", ".join(str(valor) for valor in arreglo[-limite:]) if total else ""
+        return (
+            f"Total de registros: {total}\n"
+            f"Primeros {min(limite, total)} valores:\n[{primeros}]\n"
+            f"Últimos {min(limite, total)} valores:\n[{ultimos}]\n"
+        )
 
 
 def run_app() -> None:

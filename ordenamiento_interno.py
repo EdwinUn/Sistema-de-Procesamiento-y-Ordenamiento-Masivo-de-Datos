@@ -52,6 +52,16 @@ class ResultadoOrden:
         )
 
 
+def ordenar_interno(arr: List[int], metodo: str = "bubble", reversa: bool = False) -> ResultadoOrden:
+    if metodo == "bubble":
+        return bubble_sort(arr, reversa=reversa)
+    if metodo == "insertion":
+        return insertion_sort(arr, reversa=reversa)
+    if metodo == "merge":
+        return merge_sort(arr, reversa=reversa)
+    raise ValueError(f"Método de ordenamiento interno desconocido: {metodo}")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  DECORADOR DE TIEMPO
 # ══════════════════════════════════════════════════════════════════════════
@@ -73,7 +83,7 @@ def _medir(func):
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def bubble_sort(arr: List[int]) -> ResultadoOrden:
+def bubble_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Burbuja: recorre el arreglo comparando pares adyacentes e intercambiando
     si están en el orden incorrecto. En cada pasada el elemento máximo
@@ -90,7 +100,7 @@ def bubble_sort(arr: List[int]) -> ResultadoOrden:
         hubo_intercambio = False
         for j in range(0, n - i - 1):
             cmp += 1
-            if arr[j] > arr[j + 1]:
+            if (not reversa and arr[j] > arr[j + 1]) or (reversa and arr[j] < arr[j + 1]):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 intercambios += 1
                 hubo_intercambio = True
@@ -99,7 +109,7 @@ def bubble_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Bubble Sort",
+        algoritmo="Bubble Sort Descendente" if reversa else "Bubble Sort",
         complejidad_t="O(n²) — O(n) mejor caso",
         complejidad_e="O(1)"
     )
@@ -145,7 +155,7 @@ def selection_sort(arr: List[int]) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def insertion_sort(arr: List[int]) -> ResultadoOrden:
+def insertion_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Inserción: toma cada elemento y lo inserta en la posición correcta
     dentro de la parte ya ordenada (desplazando los mayores hacia la derecha).
@@ -163,7 +173,7 @@ def insertion_sort(arr: List[int]) -> ResultadoOrden:
         j = i - 1
         while j >= 0:
             cmp += 1
-            if arr[j] > clave:
+            if (not reversa and arr[j] > clave) or (reversa and arr[j] < clave):
                 arr[j + 1] = arr[j]
                 intercambios += 1
                 j -= 1
@@ -173,7 +183,7 @@ def insertion_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Insertion Sort",
+        algoritmo="Insertion Sort Descendente" if reversa else "Insertion Sort",
         complejidad_t="O(n²) — O(n) mejor caso",
         complejidad_e="O(1)"
     )
@@ -229,7 +239,7 @@ def shell_sort(arr: List[int]) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def merge_sort(arr: List[int]) -> ResultadoOrden:
+def merge_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Mezcla: divide el arreglo recursivamente a la mitad, ordena cada mitad
     y luego las fusiona en orden.
@@ -246,7 +256,7 @@ def merge_sort(arr: List[int]) -> ResultadoOrden:
         i = j = 0
         while i < len(izq) and j < len(der):
             cmp_cnt[0] += 1
-            if izq[i] <= der[j]:
+            if (not reversa and izq[i] <= der[j]) or (reversa and izq[i] >= der[j]):
                 resultado.append(izq[i])
                 i += 1
             else:
@@ -267,7 +277,7 @@ def merge_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp_cnt[0], intercambios=intercam_cnt[0],
-        algoritmo="Merge Sort",
+        algoritmo="Merge Sort Descendente" if reversa else "Merge Sort",
         complejidad_t="O(n log n)",
         complejidad_e="O(n)"
     )

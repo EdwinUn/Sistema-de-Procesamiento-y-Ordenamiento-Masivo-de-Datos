@@ -80,7 +80,7 @@ def _cargar_xlsx(ruta: str) -> List[float]:
     return datos
 
 
-def exportar_resultados(datos: List[float], ruta: str) -> None:
+def exportar_resultados(datos: List[float], ruta: str, algoritmo: str, tiempo_ms: float) -> None:
     ruta = ruta.strip()
     if not ruta:
         raise ValueError("La ruta de exportación no puede estar vacía.")
@@ -88,24 +88,33 @@ def exportar_resultados(datos: List[float], ruta: str) -> None:
     extension = validar_extension(ruta)
 
     if extension == ".txt":
-        _exportar_txt(datos, ruta)
+        _exportar_txt(datos, ruta, algoritmo, tiempo_ms)
     elif extension == ".xlsx":
-        _exportar_xlsx(datos, ruta)
+        _exportar_xlsx(datos, ruta, algoritmo, tiempo_ms)
     else:
         raise ValueError("Formato de exportación no soportado.")
 
 
-def _exportar_txt(datos: List[float], ruta: str) -> None:
+def _exportar_txt(datos: List[float], ruta: str, algoritmo: str, tiempo_ms: float) -> None:
     with open(ruta, "w", encoding="utf-8") as archivo:
+        archivo.write(f"Algoritmo: {algoritmo}\n")
+        archivo.write(f"Tiempo ms: {tiempo_ms:.4f}\n")
+        archivo.write("\n")
         for valor in datos:
             archivo.write(f"{valor}\n")
 
 
-def _exportar_xlsx(datos: List[float], ruta: str) -> None:
+def _exportar_xlsx(datos: List[float], ruta: str, algoritmo: str, tiempo_ms: float) -> None:
     if pd is None:
         raise ImportError(
             "pandas y openpyxl son necesarios para exportar XLSX."
         )
 
-    hoja = pd.DataFrame({"valor": datos})
+    hoja = pd.DataFrame(
+        {
+            "algoritmo": [algoritmo] + [""] * len(datos),
+            "tiempo_ms": [f"{tiempo_ms:.4f}"] + [""] * len(datos),
+            "valor": [""] + [valor for valor in datos],
+        }
+    )
     hoja.to_excel(ruta, index=False, engine="openpyxl")
