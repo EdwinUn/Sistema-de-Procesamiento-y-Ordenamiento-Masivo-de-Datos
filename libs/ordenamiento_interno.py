@@ -36,6 +36,7 @@ class ResultadoOrden:
     algoritmo:      str = ""
     complejidad_t:  str = ""
     complejidad_e:  str = ""
+    detalles:       str = ""
 
     def __str__(self) -> str:
         sep = "─" * 46
@@ -52,13 +53,31 @@ class ResultadoOrden:
         )
 
 
+METODOS_INTERNOS = (
+    "bubble", "selection", "insertion", "shell",
+    "merge", "quick", "heap", "counting", "radix",
+)
+
+
 def ordenar_interno(arr: List[int], metodo: str = "bubble", reversa: bool = False) -> ResultadoOrden:
     if metodo == "bubble":
         return bubble_sort(arr, reversa=reversa)
+    if metodo == "selection":
+        return selection_sort(arr, reversa=reversa)
     if metodo == "insertion":
         return insertion_sort(arr, reversa=reversa)
+    if metodo == "shell":
+        return shell_sort(arr, reversa=reversa)
     if metodo == "merge":
         return merge_sort(arr, reversa=reversa)
+    if metodo == "quick":
+        return quick_sort(arr, reversa=reversa)
+    if metodo == "heap":
+        return heap_sort(arr, reversa=reversa)
+    if metodo == "counting":
+        return counting_sort(arr, reversa=reversa)
+    if metodo == "radix":
+        return radix_sort(arr, reversa=reversa)
     raise ValueError(f"Método de ordenamiento interno desconocido: {metodo}")
 
 
@@ -120,10 +139,10 @@ def bubble_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def selection_sort(arr: List[int]) -> ResultadoOrden:
+def selection_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
-    Selección: en cada pasada busca el elemento mínimo en la parte
-    no ordenada y lo coloca al inicio de dicha parte.
+    Selección: en cada pasada busca el elemento extremo (mínimo o máximo)
+    en la parte no ordenada y lo coloca al inicio de dicha parte.
 
     Complejidad : O(n²) en todos los casos
     Espacio     : O(1)  in-place, inestable
@@ -133,18 +152,18 @@ def selection_sort(arr: List[int]) -> ResultadoOrden:
     cmp = intercambios = 0
 
     for i in range(n - 1):
-        idx_min = i
+        idx_extremo = i
         for j in range(i + 1, n):
             cmp += 1
-            if arr[j] < arr[idx_min]:
-                idx_min = j
-        if idx_min != i:
-            arr[i], arr[idx_min] = arr[idx_min], arr[i]
+            if (not reversa and arr[j] < arr[idx_extremo]) or (reversa and arr[j] > arr[idx_extremo]):
+                idx_extremo = j
+        if idx_extremo != i:
+            arr[i], arr[idx_extremo] = arr[idx_extremo], arr[i]
             intercambios += 1
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Selection Sort",
+        algoritmo="Selection Sort Descendente" if reversa else "Selection Sort",
         complejidad_t="O(n²)",
         complejidad_e="O(1)"
     )
@@ -194,7 +213,7 @@ def insertion_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def shell_sort(arr: List[int]) -> ResultadoOrden:
+def shell_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Shell: generalización de Insertion Sort que permite intercambios de
     elementos lejanos. Comienza con un 'gap' grande (n/2) y lo va reduciendo
@@ -217,7 +236,7 @@ def shell_sort(arr: List[int]) -> ResultadoOrden:
             j = i
             while j >= gap:
                 cmp += 1
-                if arr[j - gap] > temp:
+                if (not reversa and arr[j - gap] > temp) or (reversa and arr[j - gap] < temp):
                     arr[j] = arr[j - gap]
                     intercambios += 1
                     j -= gap
@@ -228,7 +247,7 @@ def shell_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Shell Sort",
+        algoritmo="Shell Sort Descendente" if reversa else "Shell Sort",
         complejidad_t="O(n log²n) — secuencia Knuth",
         complejidad_e="O(1)"
     )
@@ -288,7 +307,7 @@ def merge_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def quick_sort(arr: List[int]) -> ResultadoOrden:
+def quick_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Rápido (Quick): selecciona un pivote, particiona el arreglo en elementos
     menores y mayores al pivote, y ordena ambas particiones recursivamente.
@@ -306,7 +325,7 @@ def quick_sort(arr: List[int]) -> ResultadoOrden:
         i = lo - 1
         for j in range(lo, hi):
             cmp += 1
-            if arr[j] <= pivote:
+            if (not reversa and arr[j] <= pivote) or (reversa and arr[j] >= pivote):
                 i += 1
                 arr[i], arr[j] = arr[j], arr[i]
                 if i != j:
@@ -326,7 +345,7 @@ def quick_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Quick Sort",
+        algoritmo="Quick Sort Descendente" if reversa else "Quick Sort",
         complejidad_t="O(n log n) — O(n²) peor caso",
         complejidad_e="O(log n)"
     )
@@ -337,10 +356,10 @@ def quick_sort(arr: List[int]) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def heap_sort(arr: List[int]) -> ResultadoOrden:
+def heap_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
-    Montículo (Heap): construye un max-heap y extrae repetidamente el máximo
-    colocándolo al final del arreglo.
+    Montículo (Heap): construye un max-heap (o min-heap para descendente) y
+    extrae repetidamente la raíz colocándola al final del arreglo.
 
     Complejidad : O(n log n) en todos los casos
     Espacio     : O(1)  in-place, inestable
@@ -351,28 +370,28 @@ def heap_sort(arr: List[int]) -> ResultadoOrden:
 
     def _heapify(n_heap: int, raiz: int) -> None:
         nonlocal cmp, intercambios
-        mayor = raiz
+        extremo = raiz
         izq   = 2 * raiz + 1
         der   = 2 * raiz + 2
 
         if izq < n_heap:
             cmp += 1
-            if arr[izq] > arr[mayor]:
-                mayor = izq
+            if (not reversa and arr[izq] > arr[extremo]) or (reversa and arr[izq] < arr[extremo]):
+                extremo = izq
         if der < n_heap:
             cmp += 1
-            if arr[der] > arr[mayor]:
-                mayor = der
-        if mayor != raiz:
-            arr[raiz], arr[mayor] = arr[mayor], arr[raiz]
+            if (not reversa and arr[der] > arr[extremo]) or (reversa and arr[der] < arr[extremo]):
+                extremo = der
+        if extremo != raiz:
+            arr[raiz], arr[extremo] = arr[extremo], arr[raiz]
             intercambios += 1
-            _heapify(n_heap, mayor)
+            _heapify(n_heap, extremo)
 
-    # Fase 1: construir max-heap
+    # Fase 1: construir el heap
     for i in range(n // 2 - 1, -1, -1):
         _heapify(n, i)
 
-    # Fase 2: extraer el máximo sucesivamente
+    # Fase 2: extraer la raíz sucesivamente
     for i in range(n - 1, 0, -1):
         arr[0], arr[i] = arr[i], arr[0]
         intercambios += 1
@@ -380,7 +399,7 @@ def heap_sort(arr: List[int]) -> ResultadoOrden:
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
-        algoritmo="Heap Sort",
+        algoritmo="Heap Sort Descendente" if reversa else "Heap Sort",
         complejidad_t="O(n log n)",
         complejidad_e="O(1)"
     )
@@ -391,37 +410,49 @@ def heap_sort(arr: List[int]) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def counting_sort(arr: List[int]) -> ResultadoOrden:
+def counting_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Conteo (Counting): cuenta las ocurrencias de cada valor y reconstruye
     el arreglo en orden. No realiza comparaciones directas.
 
     Complejidad  : O(n + k)  donde k = rango de valores
     Espacio      : O(k)      arreglo de conteo, estable
-    Restricción  : solo funciona con enteros no negativos.
+    Restricción  : trabaja con enteros (acepta negativos vía offset).
     Ideal cuando k es pequeño relativamente a n.
     """
     if not arr:
         return ResultadoOrden(arreglo=[], algoritmo="Counting Sort",
                               complejidad_t="O(n + k)", complejidad_e="O(k)")
 
-    k   = max(arr) + 1
+    # Convertir a int y aplicar offset para soportar negativos
+    arr_int = [int(x) for x in arr]
+    minimo  = min(arr_int)
+    offset  = -minimo if minimo < 0 else 0
+    arr_off = [v + offset for v in arr_int]
+
+    k   = max(arr_off) + 1
     cnt = [0] * k
 
-    for val in arr:       # fase de conteo
+    for val in arr_off:       # fase de conteo
         cnt[val] += 1
 
-    for i in range(1, k): # prefijos acumulados (para estabilidad)
+    for i in range(1, k):     # prefijos acumulados (para estabilidad)
         cnt[i] += cnt[i - 1]
 
-    salida = [0] * len(arr)
-    for val in reversed(arr):  # recorrido inverso → estable
+    salida = [0] * len(arr_off)
+    for val in reversed(arr_off):  # recorrido inverso → estable
         cnt[val] -= 1
         salida[cnt[val]] = val
 
+    # Quitar offset
+    salida = [v - offset for v in salida]
+
+    if reversa:
+        salida.reverse()
+
     return ResultadoOrden(
         arreglo=salida, comparaciones=0, intercambios=0,
-        algoritmo="Counting Sort",
+        algoritmo="Counting Sort Descendente" if reversa else "Counting Sort",
         complejidad_t="O(n + k)",
         complejidad_e=f"O(k)  [k = {k}]"
     )
@@ -432,7 +463,7 @@ def counting_sort(arr: List[int]) -> ResultadoOrden:
 # ══════════════════════════════════════════════════════════════════════════
 
 @_medir
-def radix_sort(arr: List[int]) -> ResultadoOrden:
+def radix_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Radix (Base): aplica Counting Sort dígito a dígito, del menos
     significativo (LSD) al más significativo.
@@ -440,13 +471,16 @@ def radix_sort(arr: List[int]) -> ResultadoOrden:
     Complejidad : O(nk)  donde k = número de dígitos del máximo
     Espacio     : O(n + 10) por pasada, estable
     Ideal para enteros con rango acotado de dígitos.
+    Soporta negativos vía offset.
     """
     if not arr:
         return ResultadoOrden(arreglo=[], algoritmo="Radix Sort",
                               complejidad_t="O(nk)", complejidad_e="O(n + k)")
 
-    arr = [int(x) for x in arr]
-    cmp = intercambios = 0
+    arr_int = [int(x) for x in arr]
+    minimo  = min(arr_int)
+    offset  = -minimo if minimo < 0 else 0
+    arr     = [v + offset for v in arr_int]
 
     def _counting_por_digito(a: List[int], exp: int) -> List[int]:
         n      = len(a)
@@ -467,17 +501,87 @@ def radix_sort(arr: List[int]) -> ResultadoOrden:
 
         return salida
 
-    maximo = max(arr)
+    maximo = max(arr) if arr else 0
     exp = 1
     while maximo // exp > 0:
         arr = _counting_por_digito(arr, exp)
         exp *= 10
 
+    # Quitar offset
+    arr = [v - offset for v in arr]
+
+    if reversa:
+        arr.reverse()
+
     return ResultadoOrden(
         arreglo=arr, comparaciones=0, intercambios=0,
-        algoritmo="Radix Sort (LSD)",
+        algoritmo="Radix Sort (LSD) Descendente" if reversa else "Radix Sort (LSD)",
         complejidad_t="O(nk)",
         complejidad_e="O(n + 10)"
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  BÚSQUEDAS
+# ══════════════════════════════════════════════════════════════════════════
+
+from dataclasses import dataclass as _dataclass
+
+
+@_dataclass
+class ResultadoBusqueda:
+    """Encapsula el resultado de una operación de búsqueda."""
+    valor: float
+    indices: List[int]
+    encontrado: bool
+    mensaje: str = ""
+
+
+def busqueda_lineal(datos: List[float], valor: float) -> ResultadoBusqueda:
+    """Recorre todos los elementos y devuelve todos los índices que coincidan."""
+    indices = [i for i, elemento in enumerate(datos) if elemento == valor]
+    return ResultadoBusqueda(
+        valor=valor,
+        indices=indices,
+        encontrado=bool(indices),
+        mensaje="Valor encontrado." if indices else "Valor no encontrado.",
+    )
+
+
+def busqueda_binaria(datos: List[float], valor: float) -> ResultadoBusqueda:
+    """Búsqueda binaria sobre una lista ordenada; devuelve todos los índices coincidentes."""
+    izquierda = 0
+    derecha = len(datos) - 1
+
+    while izquierda <= derecha:
+        medio = (izquierda + derecha) // 2
+        actual = datos[medio]
+        if actual == valor:
+            indices: List[int] = [medio]
+            izquierdo = medio - 1
+            while izquierdo >= 0 and datos[izquierdo] == valor:
+                indices.insert(0, izquierdo)
+                izquierdo -= 1
+            derecho = medio + 1
+            while derecho < len(datos) and datos[derecho] == valor:
+                indices.append(derecho)
+                derecho += 1
+            return ResultadoBusqueda(
+                valor=valor,
+                indices=indices,
+                encontrado=True,
+                mensaje=f"Valor encontrado en {len(indices)} posición(es).",
+            )
+        if actual < valor:
+            izquierda = medio + 1
+        else:
+            derecha = medio - 1
+
+    return ResultadoBusqueda(
+        valor=valor,
+        indices=[],
+        encontrado=False,
+        mensaje="Valor no encontrado en la lista ordenada.",
     )
 
 

@@ -35,7 +35,7 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Iterator, Tuple, Optional
 
-from ordenamiento_interno import ResultadoOrden
+from .ordenamiento_interno import ResultadoOrden
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -107,32 +107,40 @@ class _CintaTemporal:
 
     # ── Lectura ───────────────────────────────────────────────────────────
 
-    def leer_todo(self) -> List[int]:
-        """Lee todos los enteros del archivo en memoria."""
-        with open(self.ruta, "r") as f:
-            return [int(linea.strip()) for linea in f if linea.strip()]
+    @staticmethod
+    def _parsear(linea: str):
+        """Parsea como int si es posible, en otro caso como float."""
+        try:
+            return int(linea)
+        except ValueError:
+            return float(linea)
 
-    def leer_en_chunks(self, chunk_size: int) -> Iterator[List[int]]:
+    def leer_todo(self) -> List[float]:
+        """Lee todos los valores del archivo en memoria."""
+        with open(self.ruta, "r") as f:
+            return [self._parsear(linea.strip()) for linea in f if linea.strip()]
+
+    def leer_en_chunks(self, chunk_size: int) -> Iterator[List[float]]:
         """Genera chunks de hasta `chunk_size` elementos del archivo."""
         with open(self.ruta, "r") as f:
             chunk = []
             for linea in f:
                 linea = linea.strip()
                 if linea:
-                    chunk.append(int(linea))
+                    chunk.append(self._parsear(linea))
                     if len(chunk) == chunk_size:
                         yield chunk
                         chunk = []
             if chunk:
                 yield chunk
 
-    def iterador(self) -> Iterator[int]:
+    def iterador(self) -> Iterator[float]:
         """Itera elemento a elemento (simula lectura secuencial de cinta)."""
         with open(self.ruta, "r") as f:
             for linea in f:
                 linea = linea.strip()
                 if linea:
-                    yield int(linea)
+                    yield self._parsear(linea)
 
     def limpiar(self) -> None:
         """Vacía el contenido del archivo."""
@@ -163,14 +171,38 @@ def _ordenar_chunk(datos: List[int], reversa: bool = False) -> List[int]:
     return datos
 
 
-def ordenar_externo(datos: List[int], chunk_size: int = 3, reversa: bool = False) -> ResultadoOrden:
-    res = mezcla_directa(datos, chunk_size=chunk_size, reversa=reversa)
+METODOS_EXTERNOS = (
+    "directa", "natural", "equilibrada", "polifasica", "sustitucion",
+)
+
+
+def ordenar_externo(datos: List[int], chunk_size: int = 3, reversa: bool = False,
+                    metodo: str = "directa") -> ResultadoOrden:
+    if metodo == "directa":
+        res = mezcla_directa(datos, chunk_size=chunk_size, reversa=reversa)
+    elif metodo == "natural":
+        res = mezcla_natural(datos, chunk_size=chunk_size, reversa=reversa)
+    elif metodo == "equilibrada":
+        res = mezcla_equilibrada(datos, chunk_size=chunk_size, reversa=reversa)
+    elif metodo == "polifasica":
+        res = mezcla_polifasica(datos, chunk_size=chunk_size, reversa=reversa)
+    elif metodo == "sustitucion":
+        res = seleccion_sustitucion(datos, chunk_size=chunk_size, reversa=reversa)
+    else:
+        raise ValueError(f"Método de ordenamiento externo desconocido: {metodo}")
+
     algoritmo = f"{res.algoritmo} ({'Descendente' if reversa else 'Ascendente'})"
+    detalles = (
+        f"{res.descripcion} | Chunk={res.chunk_size}, "
+        f"corridas_ini={res.corridas_ini}, pasadas={res.pasadas}, "
+        f"lecturas={res.lecturas}, escrituras={res.escrituras}"
+    )
     return ResultadoOrden(
         arreglo=res.arreglo,
         algoritmo=algoritmo,
         tiempo_ms=res.tiempo_ms,
-        detalles=res.descripcion,
+        comparaciones=res.comparaciones,
+        detalles=detalles,
     )
 
 
@@ -311,7 +343,7 @@ def external_merge_sort(datos: List[int], output_file: str, chunk_size: int = 3)
 #  2. MEZCLA NATURAL (Natural Merge Sort)
 # ══════════════════════════════════════════════════════════════════════════
 
-def mezcla_natural(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
+def mezcla_natural(datos: List[int], chunk_size: int = 3, reversa: bool = False) -> ResultadoExterno:
     """
     Mezcla Natural:
     ───────────────
@@ -351,7 +383,8 @@ def mezcla_natural(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
         run = [lista[0]]
         for i in range(1, len(lista)):
             res.lecturas += 1
-            if lista[i] >= lista[i - 1]:
+            sigue_corrida = (lista[i] >= lista[i - 1]) if not reversa else (lista[i] <= lista[i - 1])
+            if sigue_corrida:
                 run.append(lista[i])
             else:
                 corridas.append(run)
@@ -376,7 +409,7 @@ def mezcla_natural(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
             res.lecturas += len(izq) + len(der)
             while ia < len(izq) and ib < len(der):
                 res.comparaciones += 1
-                if izq[ia] <= der[ib]:
+                if (not reversa and izq[ia] <= der[ib]) or (reversa and izq[ia] >= der[ib]):
                     fusionada.append(izq[ia]); ia += 1
                 else:
                     fusionada.append(der[ib]); ib += 1
@@ -397,7 +430,7 @@ def mezcla_natural(datos: List[int], chunk_size: int = 3) -> ResultadoExterno:
 # ══════════════════════════════════════════════════════════════════════════
 
 def mezcla_equilibrada(datos: List[int], chunk_size: int = 3,
-                       k: int = 4) -> ResultadoExterno:
+                       k: int = 4, reversa: bool = False) -> ResultadoExterno:
     """
     Mezcla Equilibrada k-vías:
     ──────────────────────────
@@ -460,24 +493,25 @@ def mezcla_equilibrada(datos: List[int], chunk_size: int = 3,
             if all(len(g) == 0 for g in grupos):
                 break
 
-            # Fusionar con heap
+            # Fusionar con heap (negamos valor para simular max-heap si reversa)
+            signo = -1 if reversa else 1
             heap  = []
             iters2 = [iter(g) for g in grupos]
             for ci, it2 in enumerate(iters2):
                 try:
                     val = next(it2)
-                    heapq.heappush(heap, (val, ci, it2))
+                    heapq.heappush(heap, (signo * val, ci, it2))
                 except StopIteration:
                     pass
 
             fusionado = []
             while heap:
-                val, ci, it2 = heapq.heappop(heap)
-                fusionado.append(val)
+                val_signo, ci, it2 = heapq.heappop(heap)
+                fusionado.append(signo * val_signo)
                 res.comparaciones += 1
                 try:
                     siguiente = next(it2)
-                    heapq.heappush(heap, (siguiente, ci, it2))
+                    heapq.heappush(heap, (signo * siguiente, ci, it2))
                 except StopIteration:
                     pass
 
@@ -508,7 +542,7 @@ def mezcla_equilibrada(datos: List[int], chunk_size: int = 3,
 # ══════════════════════════════════════════════════════════════════════════
 
 def mezcla_polifasica(datos: List[int], chunk_size: int = 3,
-                      k: int = 3) -> ResultadoExterno:
+                      k: int = 3, reversa: bool = False) -> ResultadoExterno:
     """
     Mezcla Polifásica k-vías (Polyphase Merge Sort):
     ─────────────────────────────────────────────────
@@ -613,25 +647,26 @@ def mezcla_polifasica(datos: List[int], chunk_size: int = 3,
                 if cintas[ci]:
                     grupos.append(cintas[ci].pop(0))
 
-            # Fusionar grupos con heap mínimo
+            # Fusionar grupos con heap (negamos valor para simular max-heap si reversa)
+            signo = -1 if reversa else 1
             heap:  List[Tuple] = []
             iters2 = [iter(g) for g in grupos]
             for ci2, it in enumerate(iters2):
                 try:
                     val = next(it)
-                    heapq.heappush(heap, (val, ci2, it))
+                    heapq.heappush(heap, (signo * val, ci2, it))
                     res.lecturas += 1
                 except StopIteration:
                     pass
 
             fusionado: List[int] = []
             while heap:
-                val, ci2, it = heapq.heappop(heap)
-                fusionado.append(val)
+                val_signo, ci2, it = heapq.heappop(heap)
+                fusionado.append(signo * val_signo)
                 res.comparaciones += 1
                 try:
                     siguiente = next(it)
-                    heapq.heappush(heap, (siguiente, ci2, it))
+                    heapq.heappush(heap, (signo * siguiente, ci2, it))
                     res.lecturas += 1
                 except StopIteration:
                     pass
@@ -662,7 +697,7 @@ def mezcla_polifasica(datos: List[int], chunk_size: int = 3,
 #  5. SELECCIÓN POR SUSTITUCIÓN (Replacement Selection Sort)
 # ══════════════════════════════════════════════════════════════════════════
 
-def seleccion_sustitucion(datos: List[int], chunk_size: int = 4) -> ResultadoExterno:
+def seleccion_sustitucion(datos: List[int], chunk_size: int = 4, reversa: bool = False) -> ResultadoExterno:
     """
     Selección por Sustitución (Replacement Selection):
     ───────────────────────────────────────────────────
@@ -762,7 +797,11 @@ def seleccion_sustitucion(datos: List[int], chunk_size: int = 4) -> ResultadoExt
             nuevas.append(fusionada)
         corridas = nuevas
 
-    res.arreglo   = corridas[0] if corridas else []
+    resultado_final = corridas[0] if corridas else []
+    if reversa:
+        resultado_final = resultado_final[::-1]
+
+    res.arreglo   = resultado_final
     res.tiempo_ms = (time.perf_counter() - inicio) * 1000
     return res
 
