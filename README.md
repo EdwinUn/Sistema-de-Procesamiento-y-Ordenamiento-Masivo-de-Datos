@@ -1,7 +1,7 @@
 # Sistema de Procesamiento y Ordenamiento Masivo de Datos
 
 Proyecto escolar — 3er Semestre  
-Materia: Algoritmos de Ordenamiento y Búsqueda
+Materia: Estructura de Datos
 
 Aplicación de escritorio desarrollada en Python con interfaz gráfica (Tkinter) para cargar, ordenar, buscar y exportar conjuntos de datos numéricos de gran tamaño, utilizando librerías propias de algoritmos de ordenamiento interno y externo.
 

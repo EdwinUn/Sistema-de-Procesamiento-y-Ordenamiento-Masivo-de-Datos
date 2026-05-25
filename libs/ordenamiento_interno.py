@@ -108,28 +108,23 @@ def bubble_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     si están en el orden incorrecto. En cada pasada el elemento máximo
     'burbujea' hasta el final.
 
-    Mejor caso  : O(n)   — lista ya ordenada (con flag de intercambio)
-    Peor / Med. : O(n²)
-    Espacio     : O(1)   in-place, estable
+    Complejidad : O(n²) en todos los casos
+    Espacio     : O(1)  in-place, estable
     """
     n   = len(arr)
     cmp = intercambios = 0
 
     for i in range(n - 1):
-        hubo_intercambio = False
         for j in range(0, n - i - 1):
             cmp += 1
             if (not reversa and arr[j] > arr[j + 1]) or (reversa and arr[j] < arr[j + 1]):
                 arr[j], arr[j + 1] = arr[j + 1], arr[j]
                 intercambios += 1
-                hubo_intercambio = True
-        if not hubo_intercambio:   # optimización: lista ya ordenada
-            break
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
         algoritmo="Bubble Sort Descendente" if reversa else "Bubble Sort",
-        complejidad_t="O(n²) — O(n) mejor caso",
+        complejidad_t="O(n²)",
         complejidad_e="O(1)"
     )
 
@@ -157,9 +152,8 @@ def selection_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
             cmp += 1
             if (not reversa and arr[j] < arr[idx_extremo]) or (reversa and arr[j] > arr[idx_extremo]):
                 idx_extremo = j
-        if idx_extremo != i:
-            arr[i], arr[idx_extremo] = arr[idx_extremo], arr[i]
-            intercambios += 1
+        arr[i], arr[idx_extremo] = arr[idx_extremo], arr[i]
+        intercambios += 1
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
@@ -217,20 +211,18 @@ def shell_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Shell: generalización de Insertion Sort que permite intercambios de
     elementos lejanos. Comienza con un 'gap' grande (n/2) y lo va reduciendo
-    hasta 1, momento en que equivale a Insertion Sort con lista casi ordenada.
+    a la mitad hasta llegar a 1, momento en que equivale a Insertion Sort
+    sobre una lista casi ordenada.
 
-    Complejidad : O(n log²n) con la secuencia de gap de Knuth
+    Complejidad : O(n²) con la secuencia original n/2
     Espacio     : O(1)  in-place, inestable
     """
     n   = len(arr)
     cmp = intercambios = 0
 
-    # Secuencia de Knuth: 1, 4, 13, 40, 121, …
-    gap = 1
-    while gap < n // 3:
-        gap = gap * 3 + 1
-
-    while gap >= 1:
+    # Secuencia original de Shell (1959): n/2, n/4, n/8, ..., 1
+    gap = n // 2
+    while gap > 0:
         for i in range(gap, n):
             temp = arr[i]
             j = i
@@ -243,12 +235,12 @@ def shell_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
                 else:
                     break
             arr[j] = temp
-        gap //= 3
+        gap //= 2
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
         algoritmo="Shell Sort Descendente" if reversa else "Shell Sort",
-        complejidad_t="O(n log²n) — secuencia Knuth",
+        complejidad_t="O(n²) — secuencia original n/2",
         complejidad_e="O(1)"
     )
 
@@ -311,11 +303,10 @@ def quick_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
     """
     Rápido (Quick): selecciona un pivote, particiona el arreglo en elementos
     menores y mayores al pivote, y ordena ambas particiones recursivamente.
-    Implementación iterativa con pila para evitar desbordamiento de pila.
 
     Mejor / Med.: O(n log n)
     Peor caso   : O(n²)  — pivote siempre el mayor/menor
-    Espacio     : O(log n) pila implícita, inestable
+    Espacio     : O(log n) pila de recursión, inestable
     """
     cmp = intercambios = 0
 
@@ -328,20 +319,18 @@ def quick_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
             if (not reversa and arr[j] <= pivote) or (reversa and arr[j] >= pivote):
                 i += 1
                 arr[i], arr[j] = arr[j], arr[i]
-                if i != j:
-                    intercambios += 1
+                intercambios += 1
         arr[i + 1], arr[hi] = arr[hi], arr[i + 1]
-        if i + 1 != hi:
-            intercambios += 1
+        intercambios += 1
         return i + 1
 
-    pila = [(0, len(arr) - 1)]
-    while pila:
-        lo, hi = pila.pop()
+    def _quick_sort_rec(lo: int, hi: int) -> None:
         if lo < hi:
             pi = _partition(lo, hi)
-            pila.append((lo, pi - 1))
-            pila.append((pi + 1, hi))
+            _quick_sort_rec(lo, pi - 1)
+            _quick_sort_rec(pi + 1, hi)
+
+    _quick_sort_rec(0, len(arr) - 1)
 
     return ResultadoOrden(
         arreglo=arr, comparaciones=cmp, intercambios=intercambios,
@@ -424,8 +413,15 @@ def counting_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
         return ResultadoOrden(arreglo=[], algoritmo="Counting Sort",
                               complejidad_t="O(n + k)", complejidad_e="O(k)")
 
-    # Convertir a int y aplicar offset para soportar negativos
-    arr_int = [int(x) for x in arr]
+    # Escalar a enteros para preservar decimales
+    def _n_dec(v) -> int:
+        parte = str(float(v)).split('.')
+        return len(parte[1].rstrip('0')) if len(parte) > 1 and parte[1].rstrip('0') else 0
+
+    max_dec = max(_n_dec(x) for x in arr)
+    factor  = 10 ** max_dec
+
+    arr_int = [round(x * factor) for x in arr]
     minimo  = min(arr_int)
     offset  = -minimo if minimo < 0 else 0
     arr_off = [v + offset for v in arr_int]
@@ -444,14 +440,17 @@ def counting_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
         cnt[val] -= 1
         salida[cnt[val]] = val
 
-    # Quitar offset
-    salida = [v - offset for v in salida]
+    # Quitar offset y revertir escala
+    salida_final: List = [
+        round((v - offset) / factor, max_dec) if max_dec > 0 else v - offset
+        for v in salida
+    ]
 
     if reversa:
-        salida.reverse()
+        salida_final.reverse()
 
     return ResultadoOrden(
-        arreglo=salida, comparaciones=0, intercambios=0,
+        arreglo=salida_final, comparaciones=0, intercambios=0,
         algoritmo="Counting Sort Descendente" if reversa else "Counting Sort",
         complejidad_t="O(n + k)",
         complejidad_e=f"O(k)  [k = {k}]"
@@ -477,7 +476,15 @@ def radix_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
         return ResultadoOrden(arreglo=[], algoritmo="Radix Sort",
                               complejidad_t="O(nk)", complejidad_e="O(n + k)")
 
-    arr_int = [int(x) for x in arr]
+    # Escalar a enteros para preservar decimales
+    def _n_dec(v) -> int:
+        parte = str(float(v)).split('.')
+        return len(parte[1].rstrip('0')) if len(parte) > 1 and parte[1].rstrip('0') else 0
+
+    max_dec = max(_n_dec(x) for x in arr)
+    factor  = 10 ** max_dec
+
+    arr_int = [round(x * factor) for x in arr]
     minimo  = min(arr_int)
     offset  = -minimo if minimo < 0 else 0
     arr     = [v + offset for v in arr_int]
@@ -507,14 +514,17 @@ def radix_sort(arr: List[int], reversa: bool = False) -> ResultadoOrden:
         arr = _counting_por_digito(arr, exp)
         exp *= 10
 
-    # Quitar offset
-    arr = [v - offset for v in arr]
+    # Quitar offset y revertir escala
+    arr_final: List = [
+        round((v - offset) / factor, max_dec) if max_dec > 0 else v - offset
+        for v in arr
+    ]
 
     if reversa:
-        arr.reverse()
+        arr_final.reverse()
 
     return ResultadoOrden(
-        arreglo=arr, comparaciones=0, intercambios=0,
+        arreglo=arr_final, comparaciones=0, intercambios=0,
         algoritmo="Radix Sort (LSD) Descendente" if reversa else "Radix Sort (LSD)",
         complejidad_t="O(nk)",
         complejidad_e="O(n + 10)"
@@ -582,6 +592,27 @@ def busqueda_binaria(datos: List[float], valor: float) -> ResultadoBusqueda:
         indices=[],
         encontrado=False,
         mensaje="Valor no encontrado en la lista ordenada.",
+    )
+
+
+def busqueda_hash(datos: List[float], valor: float) -> ResultadoBusqueda:
+    """Construye una tabla hash y realiza búsqueda en O(1) promedio."""
+    tabla: dict[float, List[int]] = {}
+    for i, elemento in enumerate(datos):
+        if elemento not in tabla:
+            tabla[elemento] = []
+        tabla[elemento].append(i)
+
+    indices = tabla.get(valor, [])
+    return ResultadoBusqueda(
+        valor=valor,
+        indices=indices,
+        encontrado=bool(indices),
+        mensaje=(
+            f"Valor encontrado en {len(indices)} posición(es)."
+            if indices else
+            "Valor no encontrado."
+        ),
     )
 
 

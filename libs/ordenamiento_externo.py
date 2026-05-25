@@ -731,42 +731,44 @@ def seleccion_sustitucion(datos: List[int], chunk_size: int = 4, reversa: bool =
         res.arreglo = []
         return res
 
-    heap_activo  : List[int] = []
-    heap_fantasma: List[int] = []
+    signo = -1 if reversa else 1   # -1 convierte min-heap en max-heap para corridas descendentes
+    heap_activo  : List[float] = []
+    heap_fantasma: List[float] = []
     corridas     : List[List[int]] = []
     corrida_actual: List[int] = []
-    ultimo_extraido = float('-inf')
+    ultimo_extraido = float('-inf') if not reversa else float('inf')
 
     # Llenar heap inicial
     for i in range(min(chunk_size, n)):
-        heapq.heappush(heap_activo, datos[i])
+        heapq.heappush(heap_activo, signo * datos[i])
         res.lecturas += 1
 
     idx = chunk_size   # siguiente elemento a leer
 
     while heap_activo:
-        # Extraer el mínimo
-        minimo = heapq.heappop(heap_activo)
-        corrida_actual.append(minimo)
+        # Extraer el extremo (mínimo ascendente / máximo descendente)
+        extraido = signo * heapq.heappop(heap_activo)
+        corrida_actual.append(extraido)
         res.escrituras += 1
-        ultimo_extraido = minimo
+        ultimo_extraido = extraido
 
         # Leer siguiente elemento si quedan
         if idx < n:
             nuevo = datos[idx]
             res.lecturas += 1
             res.comparaciones += 1
-            if nuevo >= ultimo_extraido:
-                heapq.heappush(heap_activo, nuevo)
+            continua = (nuevo >= ultimo_extraido) if not reversa else (nuevo <= ultimo_extraido)
+            if continua:
+                heapq.heappush(heap_activo, signo * nuevo)
             else:
-                heapq.heappush(heap_fantasma, nuevo)
+                heapq.heappush(heap_fantasma, signo * nuevo)
             idx += 1
 
         # Si el heap activo se agota, iniciar nueva corrida
         if not heap_activo and heap_fantasma:
             corridas.append(corrida_actual)
             corrida_actual = []
-            ultimo_extraido = float('-inf')
+            ultimo_extraido = float('-inf') if not reversa else float('inf')
             heap_activo, heap_fantasma = heap_fantasma, []
 
     if corrida_actual:
@@ -787,7 +789,7 @@ def seleccion_sustitucion(datos: List[int], chunk_size: int = 4, reversa: bool =
             res.lecturas += len(izq) + len(der)
             while ia < len(izq) and ib < len(der):
                 res.comparaciones += 1
-                if izq[ia] <= der[ib]:
+                if (not reversa and izq[ia] <= der[ib]) or (reversa and izq[ia] >= der[ib]):
                     fusionada.append(izq[ia]); ia += 1
                 else:
                     fusionada.append(der[ib]); ib += 1
@@ -798,8 +800,6 @@ def seleccion_sustitucion(datos: List[int], chunk_size: int = 4, reversa: bool =
         corridas = nuevas
 
     resultado_final = corridas[0] if corridas else []
-    if reversa:
-        resultado_final = resultado_final[::-1]
 
     res.arreglo   = resultado_final
     res.tiempo_ms = (time.perf_counter() - inicio) * 1000

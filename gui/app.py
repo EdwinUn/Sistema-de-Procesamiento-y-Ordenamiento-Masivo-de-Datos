@@ -9,6 +9,7 @@ from libs.ordenamiento_interno import (
     ResultadoBusqueda,
     ResultadoOrden,
     busqueda_binaria,
+    busqueda_hash,
     busqueda_lineal,
     ordenar_interno,
 )
@@ -242,6 +243,7 @@ class DataApp(tk.Tk):
                  font=("Segoe UI", 8), width=7, anchor="w").pack(side="left")
         ttk.Radiobutton(f_met, text="Lineal",  variable=self.search_type, value="lineal" ).pack(side="left", padx=4)
         ttk.Radiobutton(f_met, text="Binaria", variable=self.search_type, value="binaria").pack(side="left", padx=4)
+        ttk.Radiobutton(f_met, text="Hash",    variable=self.search_type, value="hash"   ).pack(side="left", padx=4)
 
         ttk.Button(card, text="Buscar valor", style="Purple.TButton",
                    command=self._buscar_valor
@@ -391,8 +393,11 @@ class DataApp(tk.Tk):
             messagebox.showerror("Busqueda", "Ingrese un numero valido.")
             return
         try:
-            if self.search_type.get() == "lineal":
+            metodo = self.search_type.get()
+            if metodo == "lineal":
                 self.resultado_busqueda = busqueda_lineal(self.datos, valor)
+            elif metodo == "hash":
+                self.resultado_busqueda = busqueda_hash(self.datos, valor)
             else:
                 if self.resultado_orden is None or not self.resultado_orden.arreglo:
                     messagebox.showwarning(
@@ -407,7 +412,7 @@ class DataApp(tk.Tk):
                 f"Busqueda completada\n"
                 f"{'─'*46}\n"
                 f"Valor    : {valor}\n"
-                f"Metodo   : {self.search_type.get().capitalize()}\n"
+                f"Metodo   : {metodo.capitalize()}\n"
                 f"Resultado: {b.mensaje}\n"
             )
             if b.encontrado:
